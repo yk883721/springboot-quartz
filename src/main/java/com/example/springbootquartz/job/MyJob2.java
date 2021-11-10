@@ -8,14 +8,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.quartz.QuartzJobBean;
 
 @Slf4j
-public class MyJob extends QuartzJobBean {
+public class MyJob2 extends QuartzJobBean {
 
     @Autowired
     private TestService testService;
 
     @Override
     protected void executeInternal(JobExecutionContext context) throws JobExecutionException {
-        log.info("ATestJob Running");
         try {
             String id = context.getJobDetail().getKey().getName();
             testService.run(id);
