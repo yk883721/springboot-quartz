@@ -1,63 +1,56 @@
 package com.example.springbootquartz.config;
 
-import com.example.springbootquartz.job.MyJob1;
-import com.example.springbootquartz.job.MyJob2;
 import org.quartz.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Configuration;
 
 import javax.annotation.PostConstruct;
+import java.util.Map;
 
 @Configuration
 public class QuartzConfig {
 
     @Autowired
+    private ApplicationContext applicationContext;
+
+    @Autowired
     private Scheduler scheduler;
 
-//    @PostConstruct
+
+    @PostConstruct
     public void test() throws SchedulerException {
+        Map<String, Object> beans = applicationContext.getBeansWithAnnotation(CustomCronJob.class);
 
-        JobDetail jobDetail1 = JobBuilder
-                .newJob(MyJob1.class)
-                .withIdentity("myJob1", "group1")
-                .storeDurably()
-                .build();
 
-        SimpleTrigger trigger1 = TriggerBuilder
-                .newTrigger()
-                .startNow()
-                .withIdentity("trigger1", "group1")
-                .forJob(jobDetail1)
-                .withSchedule(
-                        SimpleScheduleBuilder
-                                .simpleSchedule()
-                                .withIntervalInSeconds(5)
-                                .repeatForever()
-                )
-                .build();
+        for (Map.Entry<String, Object> entry : beans.entrySet()) {
 
-        JobDetail jobDetail2 = JobBuilder
-                .newJob(MyJob2.class)
-                .withIdentity("myJob2", "group1")
-                .storeDurably()
-                .build();
+            Object instance = entry.getValue();
 
-        SimpleTrigger trigger2 = TriggerBuilder
-                .newTrigger()
-                .startNow()
-                .withIdentity("trigger2", "group1")
-                .forJob(jobDetail2)
-                .withSchedule(
-                        SimpleScheduleBuilder
-                                .simpleSchedule()
-                                .withIntervalInSeconds(5)
-                                .repeatForever()
-                )
-                .build();
+            CustomCronJob annotation = instance.getClass().getAnnotation(CustomCronJob.class);
 
-        scheduler.scheduleJob(jobDetail1, trigger1);
-        scheduler.scheduleJob(jobDetail2, trigger2);
+            String jobName = annotation.jobName();
+            String triggerName = annotation.triggerName();
+            String cron = annotation.cron();
 
+
+            JobDetail jobDetail = JobBuilder
+                    .newJob((Class<? extends Job>) instance.getClass())
+                    .withIdentity(jobName)
+                    .storeDurably()
+                    .build();
+
+            CronTrigger trigger = TriggerBuilder
+                    .newTrigger()
+                    .withIdentity(triggerName)
+                    .forJob(jobDetail)
+                    .withSchedule(
+                            CronScheduleBuilder.cronSchedule(cron)
+                    )
+                    .build();
+
+            scheduler.scheduleJob(jobDetail, trigger);
+        }
     }
 
 }
